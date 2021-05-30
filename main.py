@@ -4,11 +4,14 @@ from game.Player import *
 if __name__ == '__main__':
     # random.seed(1)
     players = [
-        RandomPlayer(1),
-        RandomPlayer(2),
-        RandomPlayer(3),
-        RandomPlayer(4)
+        EquityPlayer(1, 10000, 0.5, 0.3),
+        EquityPlayer(2, 10000, 0.5, 0.3),
+        EquityPlayer(3, 10000, 0.7, 0.5),
+        EquityPlayer(4, 10000, 0.7, 0.5),
+        RandomPlayer(5),
+        RandomPlayer(6)
     ]
     # for i in range(100):
     game = Poker(players, 10, 1000, True)
-    game.play_game(10)
+    game.play_game(100)
+
