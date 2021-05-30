@@ -2,7 +2,6 @@ import random
 from abc import ABC, abstractmethod
 
 
-random.seed(110)
 class Player(ABC):
     def __init__(self, uuid):
         self.cards = []
