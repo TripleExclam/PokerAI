@@ -1,7 +1,6 @@
 from treys import Card, Evaluator, Deck
-from Action import Action
-from PlayerList import PlayerList
-
+from game.PlayerList import PlayerList
+from game.Action import Action
 
 class Poker:
     MAX_RAISES = 3  # Maximum number of times a player can raise / bet in a round
@@ -30,7 +29,7 @@ class Poker:
         """
         Move the responsibility of posting the big-blind
         """
-        self.players = self.players[1:] + self.players[0]
+        self.players = self.players[1:] + [self.players[0]]
 
     def deal_cards(self):
         """
@@ -101,20 +100,19 @@ class Poker:
         """
         return min(player.stack, action.bet_mul * self.big_blind)  # Players bet scaled by their stack
 
-    def betting_round(self, players) -> int:
+    def betting_round(self, players, bets, history, avail_actions) -> int:
         """
         Handle a single round of betting
         If a bet is placed, give all players a chance to respond
         Once all players have either folded or checked / called yields the pot
 
+        :param bets: Betting history
+        :param history: Hand history
+        :param avail_actions: Actions available at the start of the round
         :param players: PlayerList of those participating in the hand
         :return: The total amount staked
         """
-        avail_actions = [Action.FOLD, Action.CHECK] + self.BET_ACTIONS  # players can do anything but call to begin
         bet_count = self.MAX_RAISES
-
-        bets = {player.uuid: 0 for player in self.players}
-        history = {player.uuid: [] for player in self.players}
 
         while not players.visited_all():
             ind = players.pos
@@ -122,6 +120,8 @@ class Poker:
 
             action = player.act(self.get_game_state(ind, history), avail_actions)
             amount = self.get_amount(player, action)
+            if amount >= player.stack:
+                action = Action.CALL if self.all_in else Action.ALLIN
 
             history[player.uuid].append((action, amount))
             if action == Action.FOLD:
@@ -157,14 +157,25 @@ class Poker:
         """
         self.all_in = False
         active_players = PlayerList(self.players)
-
         pot = 0
         self.deal_cards()
+
+        # Charge the blinds
+        active_players.next_player().add_stack(-self.big_blind / 2)
+        active_players.next_player().add_stack(-self.big_blind)
+        active_players.visited = 0  # Blinds can bet again on top of their stake
+        bets = {player.uuid: self.big_blind / (2 - ind) if ind <= 1 else 0
+                for ind, player in enumerate(self.players)}
+        history = {player.uuid: [(Action.BET1BB, self.big_blind / (2 - ind))] if ind <= 1 else []
+                   for ind, player in enumerate(self.players)}
+        avail_actions = [Action.FOLD, Action.CALL] + self.BET_ACTIONS  # First round allows players to respond to blinds
+
         for k in [3, 1, 1]:  # Flop, Turn and River cards
             if self.all_in:  # No more betting to take place
                 self.comm_cards(k)
                 continue
-            pot += self.betting_round(active_players)
+            pot += self.betting_round(active_players, bets, history, avail_actions)
+            avail_actions = [Action.FOLD, Action.CHECK] + self.BET_ACTIONS
             if len(active_players) == 1:
                 break
 
@@ -187,7 +198,9 @@ class Poker:
 
             self.play_round()
             self.board = []
+            self.rotate_button()
             for player in self.players[:]:
-                if player.stack <= self.big_blind:
+                if player.stack < self.big_blind:
                     self.players.remove(player)
                 print(player.uuid, player.stack)
+            n -= 1
