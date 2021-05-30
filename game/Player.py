@@ -12,16 +12,8 @@ class Player(ABC):
         assert len(cards) == 2, "Cards should be dealt in pairs"
         self.cards = cards
 
-    def get_cards(self):
-        return self.cards
-
     def add_stack(self, stack):
         self.stack = max(0, self.stack + stack)
-
-    def reward(self, amount):
-        self.stack += amount
-        if self.stack <= 0:
-            print("BUST")
 
     def __eq__(self, o: object) -> bool:
         return o is Player and o.uuid == self.uuid

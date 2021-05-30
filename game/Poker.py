@@ -1,31 +1,6 @@
 from treys import Card, Evaluator, Deck
 from Action import Action
-from Player import RandomPlayer
-
-
-class PlayerList:
-
-    def __init__(self, players):
-        self.rotation = [x for x in players]
-        self.pos = 0
-        self.visited = 0
-
-    def remove(self, player):
-        self.rotation.remove(player)
-        self.pos = max(self.pos - 1, 0)
-        self.visited -= 1
-
-    def next_player(self):
-        player = self.rotation[self.pos]
-        self.pos = (self.pos + 1) % len(self.rotation)
-        self.visited += 1
-        return player
-
-    def visited_all(self):
-        return self.visited >= len(self.rotation) or len(self.rotation) <= 1
-
-    def __len__(self):
-        return len(self.rotation)
+from PlayerList import PlayerList
 
 
 class Poker:
@@ -44,7 +19,7 @@ class Poker:
         self.display = display
         self.big_blind = big_blind
         self.players = [x for x in participants]
-        for player in players:
+        for player in participants:
             player.add_stack(starting_stack - player.stack)
 
         self.deck = Deck()
@@ -52,15 +27,21 @@ class Poker:
         self.all_in = False
 
     def rotate_button(self):
+        """
+        Move the responsibility of posting the big-blind
+        """
         self.players = self.players[1:] + self.players[0]
 
     def deal_cards(self):
+        """
+        Reset the deck and deal cards for a new hand
+        """
         self.deck.shuffle()
         for player in self.players:
             player.set_cards(self.deck.draw(2))  # Texas Hold'em gives each player 2 cards.
 
             if self.display:
-                print(player.uuid, Card.print_pretty_cards(player.get_cards()))
+                print(player.uuid, Card.print_pretty_cards(player.cards))
 
     def comm_cards(self, n):
         """
@@ -77,6 +58,10 @@ class Poker:
             print(Card.print_pretty_cards(self.board))
 
     def calculate_winner(self, players):
+        """
+        Determin the winner of a hand using smart encodings supplied by treys
+        :param players: Remaining players in the game
+        """
         if len(players) <= 1:  # Only check for winners if necessary
             return players.rotation[0]
 
@@ -84,9 +69,9 @@ class Poker:
         best = (None, float('inf'))
 
         for player in players.rotation:
-            card_eval = evaluator.evaluate(self.board, player.get_cards())
+            card_eval = evaluator.evaluate(self.board, player.cards)
             if self.display:
-                print(Card.print_pretty_cards(player.get_cards()),
+                print(Card.print_pretty_cards(player.cards),
                       evaluator.class_to_string(evaluator.get_rank_class(card_eval)))
             if card_eval < best[1]:
                 best = (player, card_eval)
@@ -94,6 +79,12 @@ class Poker:
         return best[0]
 
     def get_game_state(self, player, history):
+        """
+        Summarises the game in a dictionary. Needs work...
+        :param player: Index of current player
+        :param history: All actions in the given hand
+        :return: All available information in the game
+        """
         assert player < len(self.players)
         return {
             "board": self.board,
@@ -102,6 +93,12 @@ class Poker:
         }
 
     def get_amount(self, player, action):
+        """
+        The amount of chips a player bids given an action
+        :param player: Current player
+        :param action: Action.py
+        :return: Amount of chips
+        """
         return min(player.stack, action.bet_mul * self.big_blind)  # Players bet scaled by their stack
 
     def betting_round(self, players) -> int:
@@ -139,22 +136,25 @@ class Poker:
             bets[player.uuid] += amount
 
             if action != Action.CALL and action != Action.CHECK:
+                bet_count -= 1
                 players.visited = 1  # Re-visit all proceeding players
                 avail_actions = [Action.FOLD, Action.CALL]
                 self.all_in = action == Action.ALLIN  # TODO: support re-raising an all-in
 
-                if not self.all_in:
-                    bet_count -= 1
-                    if bet_count > 0:
-                        avail_actions += self.BET_ACTIONS
+                if not self.all_in and bet_count > 0:
+                    avail_actions += self.BET_ACTIONS
 
         if self.display:
             print("ACTIONS:", history)
             print("BETS", bets)
+
         players.visited = 0  # Reset for the next hand
         return sum(bets.values())
 
     def play_round(self):
+        """
+        Executes a hand of poker
+        """
         self.all_in = False
         active_players = PlayerList(self.players)
 
@@ -174,9 +174,13 @@ class Poker:
         winner.add_stack(pot)
 
         if self.display:
-            print(winner.uuid, "wins with" + Card.print_pretty_cards(winner.get_cards()))
+            print(winner.uuid, "wins with" + Card.print_pretty_cards(winner.cards))
 
     def play_game(self, n):
+        """
+        Executes a game of poker until a winner emerges or n games are played
+        :param n: Number of games to play
+        """
         while n > 0 and len(self.players) > 1:
             if self.display:
                 print("\n-------------NEW GAME-------------\n")
@@ -184,21 +188,6 @@ class Poker:
             self.play_round()
             self.board = []
             for player in self.players[:]:
-                if player.stack <= 0:
+                if player.stack <= self.big_blind:
                     self.players.remove(player)
                 print(player.uuid, player.stack)
-
-
-if __name__ == '__main__':
-    # random.seed(1)
-    players = [
-        RandomPlayer(1),
-        RandomPlayer(2),
-        RandomPlayer(3),
-        RandomPlayer(4),
-        RandomPlayer(5),
-        RandomPlayer(6)
-    ]
-    for i in range(100):
-        game = Poker(players, 10, 10000, True)
-        game.play_game(1000)
