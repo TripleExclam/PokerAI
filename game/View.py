@@ -1,19 +1,18 @@
 import numpy as np
 import pyglet
+from pyglet.gl import glClearColor
 from math import radians, cos, sin
 
-WHITE = list(np.array([255, 255, 255, 255]))
 GREEN = list(np.array([0, 255, 0, 123]))
 BLUE = list(np.array([0, 0, 128, 255]))
-BLACK = list(np.array([0, 0, 0, 0]) / 255)
-RED = list(np.array([255, 0, 0, 123]))
-LIGHT = list(np.array([255, 150, 150, 123]))
+BLACK = list(np.array([0, 0, 0, 255]))
 
 
 class PygletWindow:
     def __init__(self, X, Y):
         self.active = True
         self.display_surface = pyglet.window.Window(width=X, height=Y + 50)
+        glClearColor(255, 255, 255, 1.0)
         self.top = Y
 
         self.display_surface.switch_to()
@@ -35,7 +34,7 @@ class PygletWindow:
 
     def text(self, text, x, y, font_size=20, color=None):
         y = self.top - y
-        label = pyglet.text.Label(text, font_size=font_size,
+        label = pyglet.text.Label(text, font_name='Arial', font_size=font_size,
                                   x=x, y=y, anchor_x='left', anchor_y='top',
                                   color=[int(c) for c in color])
         label.draw()

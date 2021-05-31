@@ -1,7 +1,7 @@
 from treys import Card, Evaluator, Deck
 from game.PlayerList import PlayerList
 from game.Action import Action
-from view.rendering import PygletWindow, WHITE, RED, GREEN, BLUE
+from game.View import PygletWindow, BLACK, GREEN, BLUE
 import numpy as np
 import time
 
@@ -38,46 +38,42 @@ class Poker:
 
     def display_game(self):
         """Display the current state of the game using pyglet"""
-        screen_width = 600
-        screen_height = 400
-        table_radius = 200
-        face_radius = 10
-
         if self.viewer is None:
-            self.viewer = PygletWindow(screen_width + 50, screen_height + 50)
+            self.viewer = PygletWindow(650, 450)
         self.viewer.reset()
-        self.viewer.circle(screen_width / 2, screen_height / 2, table_radius, color=BLUE,
+
+        self.viewer.circle(300, 200, 200, color=BLUE,
                            thickness=0)
+        self.viewer.text(f"CARDS: {Card.print_pretty_cards(self.board)}", 240, 200,
+                         font_size=10,
+                         color=BLACK)
+        self.viewer.text(f"POT: ${sum(self.bets.values())}", 240, 180,
+                         font_size=10,
+                         color=BLACK)
 
         for player in self.players:
             degrees = player.uuid * 60
             radian = (degrees * (np.pi / 180))
-            x = (face_radius + table_radius) * np.cos(radian) + screen_width / 2
-            y = (face_radius + table_radius) * np.sin(radian) + screen_height / 2
-            self.viewer.circle(x, y, face_radius, color=GREEN, thickness=2)
+            x = 210 * np.cos(radian) + 300
+            y = 210 * np.sin(radian) + 200
 
             self.viewer.text(f"Player {player.uuid}: {Card.print_pretty_cards(player.cards)}", x - 60, y - 15,
                              font_size=10,
-                             color=WHITE)
+                             color=BLACK)
 
             self.viewer.text(f"${player.stack}", x - 60, y,
                              font_size=10,
-                             color=GREEN)
+                             color=BLUE)
             actions = list(map(lambda x: x[0].name, self.history[player.uuid]))
-            self.viewer.text(f"{actions}",x - 60, y + 15,
+            self.viewer.text(f"{actions}", x - 60, y + 15,
                              font_size=10,
-                             color=WHITE)
+                             color=GREEN)
 
-            x_inner = (-face_radius + table_radius - 60) * np.cos(radian) + screen_width / 2
-            y_inner = (-face_radius + table_radius - 60) * np.sin(radian) + screen_height / 2
-            self.viewer.text(f"${self.bets[player.uuid]}", x_inner, y_inner, font_size=10, color=WHITE)
-
-            self.viewer.text(f"{Card.print_pretty_cards(self.board)}", screen_width / 2 - 40, screen_height / 2,
-                             font_size=10,
-                             color=WHITE)
+            x_inner = 130 * np.cos(radian) + 300
+            y_inner = 130 * np.sin(radian) + 200
+            self.viewer.text(f"${self.bets[player.uuid]}", x_inner, y_inner, font_size=10, color=BLACK)
 
         self.viewer.update()
-
 
     def reset_bets(self):
         self.bets = {player.uuid: 0 for player in self.players}
@@ -252,8 +248,10 @@ class Poker:
         for k in [3, 1, 1]:  # Flop, Turn and River cards
             if self.all_in:  # No more betting to take place
                 self.comm_cards(k)
+                time.sleep(1)  # Allow enough time to view in GUI
                 continue
             pot += self.betting_round(avail_actions)
+            time.sleep(1)  # Allow enough time to view in GUI
             avail_actions = [Action.FOLD, Action.CHECK] + self.BET_ACTIONS
             self.reset_bets()
 
@@ -261,7 +259,7 @@ class Poker:
                 break
 
             self.comm_cards(k)  # Reveal cards after each betting round
-            time.sleep(1)
+            time.sleep(1)  # Allow enough time to view in GUI
 
         winner = self.calculate_winner()
         winner.add_stack(pot)
