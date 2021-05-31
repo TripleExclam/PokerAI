@@ -111,10 +111,10 @@ class Poker:
         player = self.player_list.next_player()
 
         action = Action.BET1BB
-        amount = self.big_blind / (2 if is_big else 1)
+        amount = self.big_blind / (1 if is_big else 2)
         self.history[player.uuid].append((action, amount))
         self.bets[player.uuid] += amount
-        self.player_list.visited = 0  # Blinds can bet again on top of their stake
+        self.player_list.visited = 1  # Blinds can bet again on top of their stake
         player.add_stack(-amount)
 
         return action, amount
@@ -131,7 +131,7 @@ class Poker:
         self.history[player.uuid].append((action, amount))
         if action == Action.FOLD:
             self.player_list.remove(player)  # player is not participating in this hand
-            return action, amount
+            return avail_actions
 
         # If a player raises or calls, we calculate the remainder they need to pay.
         debt = max(self.bets.values()) - self.bets[player.uuid]
@@ -149,7 +149,7 @@ class Poker:
             if not self.all_in and self.bet_count > 0:
                 avail_actions += self.BET_ACTIONS
 
-        return action, amount
+        return avail_actions
 
     def betting_round(self, avail_actions) -> int:
         """
@@ -166,7 +166,7 @@ class Poker:
         self.bet_count = self.MAX_RAISES
 
         while not self.player_list.visited_all():
-            self.step_bets(avail_actions)
+            avail_actions = self.step_bets(avail_actions)
 
         if self.display:
             print("ACTIONS:", self.history)
