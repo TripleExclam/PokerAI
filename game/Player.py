@@ -38,6 +38,7 @@ class RandomPlayer(Player):
     def act(self, game_state, actions_avail):
         return random.choice(actions_avail)
 
+
 class EquityPlayer(Player):
     CARD_RANKS_ORIGINAL = '23456789TJQKA'
     SUITS_ORIGINAL = 'CDHS'
@@ -63,28 +64,23 @@ class EquityPlayer(Player):
             c_str = Card.int_to_str(table_card)
             table_cards_numeric.append([self.CARD_RANKS_ORIGINAL.find(c_str[0]), self.SUITS_ORIGINAL.find(c_str[1])])
 
-        equity = self.evaluator.run_evaluation(
-            card1=card1,
-            card2=card2, 
-            tablecards=table_cards_numeric, 
-            iterations=self.iters,
-            player_amount=n_players
-        )
+        equity = self.evaluator.run_evaluation(card1=card1, card2=card2, tablecards=table_cards_numeric,
+                                               iterations=self.iters, player_amount=n_players)
 
         return equity
 
     def act(self, game_state, actions_avail):
         equity_alive = self.eval_hand(game_state["board"], len(game_state["history"]))
-        incremen1 = .1
+        increment1 = .1
         increment2 = .2
 
         if equity_alive > self.min_bet_equity + increment2 and Action.ALLIN in actions_avail:
             action = Action.ALLIN
-        elif equity_alive > self.min_bet_equity + incremen1 and Action.BET5BB in actions_avail:
+        elif equity_alive > self.min_bet_equity + increment1 and Action.BET5BB in actions_avail:
             action = Action.BET5BB
         elif equity_alive > self.min_bet_equity and Action.BET3BB in actions_avail:
             action = Action.BET3BB
-        elif equity_alive > self.min_bet_equity - incremen1 and Action.BET1BB in actions_avail:
+        elif equity_alive > self.min_bet_equity - increment1 and Action.BET1BB in actions_avail:
             action = Action.BET1BB
         elif equity_alive > self.min_call_equity and Action.CALL in actions_avail:
             action = Action.CALL
@@ -94,7 +90,3 @@ class EquityPlayer(Player):
             action = Action.FOLD
 
         return action
-
-
-
-
