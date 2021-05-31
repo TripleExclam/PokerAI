@@ -52,10 +52,11 @@ class Poker:
                          color=BLACK)
 
         for player in self.players:
-            degrees = player.uuid * 60
-            radian = (degrees * (np.pi / 180))
+            radian = player.uuid * 60 * np.pi / 180
             x = 210 * np.cos(radian) + 300
             y = 210 * np.sin(radian) + 200
+            x_inner = 130 * np.cos(radian) + 300
+            y_inner = 130 * np.sin(radian) + 200
 
             self.viewer.text(f"Player {player.uuid}: {Card.print_pretty_cards(player.cards)}", x - 60, y - 15,
                              font_size=10,
@@ -64,13 +65,12 @@ class Poker:
             self.viewer.text(f"${player.stack}", x - 60, y,
                              font_size=10,
                              color=BLUE)
+
             actions = list(map(lambda x: x[0].name, self.history[player.uuid]))
             self.viewer.text(f"{actions}", x - 60, y + 15,
                              font_size=10,
                              color=GREEN)
 
-            x_inner = 130 * np.cos(radian) + 300
-            y_inner = 130 * np.sin(radian) + 200
             self.viewer.text(f"${self.bets[player.uuid]}", x_inner, y_inner, font_size=10, color=BLACK)
 
         self.viewer.update()
