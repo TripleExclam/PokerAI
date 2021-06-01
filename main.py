@@ -12,6 +12,6 @@ if __name__ == '__main__':
         RandomPlayer(6)
     ]
     # for i in range(100):
-    game = Poker(players, 10, 1000, True)
+    game = Poker(players, 10, 1000, True, True)
     game.play_game(100)
 

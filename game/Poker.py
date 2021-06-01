@@ -1,20 +1,26 @@
 from treys import Card, Evaluator, Deck
 from game.PlayerList import PlayerList
 from game.Action import Action
+from game.View import PygletWindow, BLACK, GREEN, BLUE
+import numpy as np
+import time
+
 
 class Poker:
     MAX_RAISES = 3  # Maximum number of times a player can raise / bet in a round
     BET_ACTIONS = [Action.BET1BB, Action.BET3BB, Action.BET4BB, Action.BET5BB, Action.ALLIN]
 
-    def __init__(self, participants, big_blind, starting_stack, display=False):
+    def __init__(self, participants, big_blind, starting_stack, log=False, display=False):
         """
         No Limit Texas Hold'em Engine powered by 'treys'
 
         :param big_blind: Cost of playing a hand
         :param starting_stack: Number of chips each player begins with
-        :param display: Whether or not to show the actions taken in the game
+        :param log: Whether or not to show the actions taken in the game in the console
+        :param display: Whether or not to show the actions taken in the game in graphical format
         :param participants: List of players in the game
         """
+        self.log = log
         self.display = display
         self.big_blind = big_blind
         self.players = [x for x in participants]
@@ -26,8 +32,48 @@ class Poker:
         self.all_in = False
         self.bet_count = self.MAX_RAISES
         self.player_list = PlayerList(self.players)
-        self.history = {}
+        self.history = {player.uuid: [] for player in self.players}
         self.bets = {}
+        self.viewer = None
+
+    def display_game(self):
+        """Display the current state of the game using pyglet"""
+        if self.viewer is None:
+            self.viewer = PygletWindow(650, 450)
+        self.viewer.reset()
+
+        self.viewer.circle(300, 200, 200, color=BLUE,
+                           thickness=0)
+        self.viewer.text(f"CARDS: {Card.print_pretty_cards(self.board)}", 240, 200,
+                         font_size=10,
+                         color=BLACK)
+        self.viewer.text(f"POT: ${sum(self.bets.values())}", 240, 180,
+                         font_size=10,
+                         color=BLACK)
+
+        for player in self.players:
+            radian = player.uuid * 60 * np.pi / 180
+            x = 210 * np.cos(radian) + 300
+            y = 210 * np.sin(radian) + 200
+            x_inner = 130 * np.cos(radian) + 300
+            y_inner = 130 * np.sin(radian) + 200
+
+            self.viewer.text(f"Player {player.uuid}: {Card.print_pretty_cards(player.cards)}", x - 60, y - 15,
+                             font_size=10,
+                             color=BLACK)
+
+            self.viewer.text(f"${player.stack}", x - 60, y,
+                             font_size=10,
+                             color=BLUE)
+
+            actions = list(map(lambda x: x[0].name, self.history[player.uuid]))
+            self.viewer.text(f"{actions}", x - 60, y + 15,
+                             font_size=10,
+                             color=GREEN)
+
+            self.viewer.text(f"${self.bets[player.uuid]}", x_inner, y_inner, font_size=10, color=BLACK)
+
+        self.viewer.update()
 
     def reset_bets(self):
         self.bets = {player.uuid: 0 for player in self.players}
@@ -47,6 +93,8 @@ class Poker:
             player.set_cards(self.deck.draw(2))  # Texas Hold'em gives each player 2 cards.
 
             if self.display:
+                self.display_game()
+            if self.log:
                 print(player.uuid, Card.print_pretty_cards(player.cards))
 
     def comm_cards(self, n):
@@ -61,6 +109,8 @@ class Poker:
             self.board.append(self.deck.draw(1))
 
         if self.display:
+            self.display_game()
+        if self.log:
             print(Card.print_pretty_cards(self.board))
 
     def calculate_winner(self):
@@ -77,6 +127,8 @@ class Poker:
         for player in self.player_list.rotation:
             card_eval = evaluator.evaluate(self.board, player.cards)
             if self.display:
+                self.display_game()
+            if self.log:
                 print(Card.print_pretty_cards(player.cards),
                       evaluator.class_to_string(evaluator.get_rank_class(card_eval)))
             if card_eval < best[1]:
@@ -169,6 +221,8 @@ class Poker:
             avail_actions = self.step_bets(avail_actions)
 
         if self.display:
+            self.display_game()
+        if self.log:
             print("ACTIONS:", self.history)
             print("BETS", self.bets)
 
@@ -194,8 +248,12 @@ class Poker:
         for k in [3, 1, 1]:  # Flop, Turn and River cards
             if self.all_in:  # No more betting to take place
                 self.comm_cards(k)
+                if self.display:
+                    time.sleep(1)  # Allow enough time to view in GUI
                 continue
             pot += self.betting_round(avail_actions)
+            if self.display:
+                time.sleep(1)
             avail_actions = [Action.FOLD, Action.CHECK] + self.BET_ACTIONS
             self.reset_bets()
 
@@ -203,11 +261,15 @@ class Poker:
                 break
 
             self.comm_cards(k)  # Reveal cards after each betting round
+            if self.display:
+                time.sleep(1)
 
         winner = self.calculate_winner()
         winner.add_stack(pot)
 
         if self.display:
+            self.display_game()
+        if self.log:
             print(winner.uuid, "wins with" + Card.print_pretty_cards(winner.cards))
 
     def play_game(self, n):
@@ -216,7 +278,7 @@ class Poker:
         :param n: Number of games to play
         """
         while n > 0 and len(self.players) > 1:
-            if self.display:
+            if self.log:
                 print("\n-------------NEW GAME-------------\n")
 
             self.play_round()
@@ -227,6 +289,9 @@ class Poker:
                 stack_sum += player.stack
                 if player.stack < self.big_blind:
                     self.players.remove(player)
+
+                if self.display:
+                    self.display_game()
                 print(player.uuid, player.stack)
             assert stack_sum == 6000, "Failed stack sum :("
             n -= 1
