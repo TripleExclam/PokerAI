@@ -6,9 +6,11 @@ import numpy as np
 import time
 
 
+
 class Poker:
-    MAX_RAISES = 3  # Maximum number of times a player can raise / bet in a round
-    BET_ACTIONS = [Action.BET1BB, Action.BET3BB, Action.BET4BB, Action.BET5BB, Action.ALLIN]
+    MAX_RAISES = 1  # Maximum number of times a player can raise / bet in a round
+    # BET_ACTIONS = [Action.BET1BB, Action.BET3BB, Action.BET4BB, Action.BET5BB, Action.ALLIN]
+    BET_ACTIONS = [Action.BET3BB, Action.ALLIN]
 
     def __init__(self, participants, big_blind, starting_stack, log=False, display=False):
         """
@@ -166,7 +168,7 @@ class Poker:
         amount = self.big_blind / (1 if is_big else 2)
         self.history[player.uuid].append((action, amount))
         self.bets[player.uuid] += amount
-        self.player_list.visited = 1  # Blinds can bet again on top of their stake
+        self.player_list.visited = 0  # Blinds can bet again on top of their stake
         player.add_stack(-amount)
 
         return action, amount
@@ -209,10 +211,7 @@ class Poker:
         If a bet is placed, give all players a chance to respond
         Once all players have either folded or checked / called yields the pot
 
-        :param bets: Betting history
-        :param history: Hand history
         :param avail_actions: Actions available at the start of the round
-        :param players: PlayerList of those participating in the hand
         :return: The total amount staked
         """
         self.bet_count = self.MAX_RAISES
@@ -240,12 +239,11 @@ class Poker:
         self.deal_cards()
 
         self.history = {player.uuid: [] for player in self.players}
-        # Charge the blinds
         self.step_blind(False)  # Small blind
         self.step_blind(True)  # Big Blind
 
         avail_actions = [Action.FOLD, Action.CALL] + self.BET_ACTIONS  # First round allows players to respond to blinds
-        for k in [3, 1, 1]:  # Flop, Turn and River cards
+        for k in [3]:  # Flop, Turn and River cards
             if self.all_in:  # No more betting to take place
                 self.comm_cards(k)
                 if self.display:
@@ -284,14 +282,11 @@ class Poker:
             self.play_round()
             self.board = []
             self.rotate_button()
-            stack_sum = 0
             for player in self.players[:]:
-                stack_sum += player.stack
                 if player.stack < self.big_blind:
                     self.players.remove(player)
 
                 if self.display:
                     self.display_game()
                 print(player.uuid, player.stack)
-            assert stack_sum == 6000, "Failed stack sum :("
             n -= 1

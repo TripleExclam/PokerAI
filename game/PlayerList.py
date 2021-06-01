@@ -21,5 +21,11 @@ class PlayerList:
     def visited_all(self):
         return self.visited >= len(self.rotation) or len(self.rotation) <= 1
 
+    def duplicate(self):
+        copy = PlayerList(self.rotation)
+        copy.pos = self.pos
+        copy.visited = self.visited
+        return copy
+
     def __len__(self):
         return len(self.rotation)
