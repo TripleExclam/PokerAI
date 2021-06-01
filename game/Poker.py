@@ -203,7 +203,7 @@ class Poker:
         # If a player raises or calls, we calculate the remainder they need to pay.
         debt = max(self.bets.values()) - self.bets[player.uuid]
         amount = min(amount + debt, player.stack)  # Effectively places the player all-in if they cannot afford
-        player.add_stack(-amount)
+        # player.add_stack(-amount)
 
         self.bets[player.uuid] += amount
 

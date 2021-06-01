@@ -15,8 +15,16 @@ class GameWrapper:
         self.actions = []
 
     def hole_card_state(self, game, player):
-        opponent_acts = [str(y) for x, y in game.history.items() if x != player.uuid]
-        return ','.join(opponent_acts) + ','.join([Card.int_to_str(x) for x in player.cards])
+        suited = 'o'
+        if Card.get_suit_int(player.cards[0]) == Card.get_suit_int(player.cards[1]):
+            suited = 's'
+        card_rep = Card.STR_RANKS[Card.get_rank_int(player.cards[0])] + \
+                   Card.STR_RANKS[Card.get_rank_int(player.cards[1])] + suited
+        act_map = {Action.FOLD: "F", Action.CALL: "C", Action.BET1BB: "",
+                   Action.BET3BB: "B", Action.ALLIN: "AI"}
+
+        acts = str([','.join([act_map[i[0]] for i in y if i[0] != Action.BET1BB]) for x, y in game.history.items()])
+        return card_rep, player.uuid, acts
 
     def train(self, iterations, print_interval=1000):
         ''' Do ficticious self-play to find optimal strategy'''
@@ -25,9 +33,6 @@ class GameWrapper:
         for i in range(iterations):
             if i % print_interval == 0 and i != 0:
                 print("\rP1 expected value after %i iterations: %f" % (i, util / i))
-                for state, item in self.game_states.items():
-                    if item.strategy_[Action.FOLD] != 1 / len(item.strategy_.values()):
-                        print(state, "->", item)
 
             # Start a game
             game = self.game.copy()
@@ -40,7 +45,29 @@ class GameWrapper:
         """
         Gives the action played by each player based on the game states
         """
-        return -1
+        result = {}
+        #
+        events = {(1, "['', '']"): "1BET",  # P1 acts first
+                  (2, "['C', '']"): "2BET",  # P2 responds to a call from P1
+                  (2, "['B', '']"): "2CALL",  # P2 responds to a bet from P1
+                  (2, "['AI', '']"): "2CALL",  # P2 responds to a All-in from P1
+                  (1, "['C', 'B']"): "1CALL",  # P1 responds to a bet from P2
+                  (1, "['C', 'AI']"): "1CALL"}  # P1 responds to an all in from P2
+        for event in events.values():
+            result[event] = {}
+            if "BET" in event:
+                result[event[0] + "ALLIN"] = {}
+
+        for state, node in self.game_states.items():
+            hand = state[0]
+            event = events[state[1], state[2]]
+            if "BET" in events[state[1], state[2]]:
+                result[event][hand] = node.strategy_[Action.BET3BB]
+                result[event[0] + "ALLIN"][hand] = node.strategy_[Action.ALLIN]
+            else:
+                result[event][hand] = node.strategy_[Action.CALL]
+
+        return result
 
     def evaluation(self, game):
         reward = sum(game.bets.values())
