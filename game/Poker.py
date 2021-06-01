@@ -6,7 +6,6 @@ import numpy as np
 import time
 
 
-
 class Poker:
     MAX_RAISES = 1  # Maximum number of times a player can raise / bet in a round
     # BET_ACTIONS = [Action.BET1BB, Action.BET3BB, Action.BET4BB, Action.BET5BB, Action.ALLIN]
@@ -26,8 +25,9 @@ class Poker:
         self.display = display
         self.big_blind = big_blind
         self.players = [x for x in participants]
-        for player in participants:
-            player.add_stack(starting_stack - player.stack)
+        if starting_stack != 0:
+            for player in participants:
+                player.add_stack(starting_stack - player.stack)
 
         self.deck = Deck()
         self.board = []
@@ -112,6 +112,7 @@ class Poker:
 
         if self.display:
             self.display_game()
+            time.sleep(3)
         if self.log:
             print(Card.print_pretty_cards(self.board))
 
@@ -173,11 +174,23 @@ class Poker:
 
         return action, amount
 
-    def step_bets(self, avail_actions):
+    def copy(self):
+        game = Poker(self.players, self.big_blind, 0)
+        game.deck.cards = [x for x in self.deck.cards]
+        game.board = [x for x in self.board]
+        game.all_in = self.all_in
+        game.bet_count = self.bet_count
+        game.player_list = self.player_list.duplicate()
+        game.history = {k: [i for i in v] for k, v in self.history.items()}
+        game.bets = {k: v for k, v in self.bets.items()}
+        return game
+
+    def step_bets(self, avail_actions, action=None):
         ind = self.player_list.pos
         player = self.player_list.next_player()
 
-        action = player.act(self.get_game_state(ind, self.history), avail_actions)
+        if action is None:
+            action = player.act(self.get_game_state(ind, self.history), avail_actions)
         amount = self.get_amount(player, action)
         if amount >= player.stack:
             action = Action.CALL if self.all_in else Action.ALLIN
@@ -246,12 +259,8 @@ class Poker:
         for k in [3]:  # Flop, Turn and River cards
             if self.all_in:  # No more betting to take place
                 self.comm_cards(k)
-                if self.display:
-                    time.sleep(1)  # Allow enough time to view in GUI
                 continue
             pot += self.betting_round(avail_actions)
-            if self.display:
-                time.sleep(1)
             avail_actions = [Action.FOLD, Action.CHECK] + self.BET_ACTIONS
             self.reset_bets()
 
@@ -259,8 +268,6 @@ class Poker:
                 break
 
             self.comm_cards(k)  # Reveal cards after each betting round
-            if self.display:
-                time.sleep(1)
 
         winner = self.calculate_winner()
         winner.add_stack(pot)

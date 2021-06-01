@@ -32,7 +32,7 @@ class PygletWindow:
 
     def text(self, text, x, y, font_size=20, color=None):
         y = self.top - y
-        label = pyglet.text.Label(text, font_name='Arial', font_size=font_size,
+        label = pyglet.text.Label(text, font_name='Times New Roman', font_size=font_size,
                                   x=x, y=y, anchor_x='left', anchor_y='top',
                                   color=[int(c) for c in color])
         label.draw()

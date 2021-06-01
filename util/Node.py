@@ -10,6 +10,9 @@ class Node():
             self.strategy_[action] = 0.0
             self.strategy_sum_[action] = 0.0
 
+    def __str__(self):
+        return str(self.strategy_)
+
     def get_strategy(self, realization_weight):
         normalizing_sum = 0
 

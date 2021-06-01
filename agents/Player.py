@@ -10,6 +10,7 @@ class Player(ABC):
     def set_cards(self, cards):
         assert len(cards) == 2, "Cards should be dealt in pairs"
         self.cards = cards
+        self.cards.sort()
 
     def add_stack(self, stack):
         self.stack = max(0, self.stack + stack)

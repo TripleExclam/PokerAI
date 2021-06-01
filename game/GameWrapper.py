@@ -1,42 +1,38 @@
-from Poker import *
-from agents.EquityPlayer import *
-from agents.RandomPlayer import *
+from game.Poker import *
+from agents.PlayerShell import *
 from util.Node import *
+
 
 class GameWrapper:
 
     def __init__(self):
         self.game_states = {}
         self.players = [
-            RandomPlayer(1),
-            RandomPlayer(2)
+            PlayerShell(1),
+            PlayerShell(2)
         ]
-        self.game = Poker(self.players, 20, 1000, True)
+        self.game = Poker(self.players, 20, 10000, True)
         self.actions = []
-        self.step = 0
-        self.reward = 0
-        self.to_move = 1
 
-    def hole_card_state(self):
-        curr_player = self.game.players[self.to_move]
-        # hand_eval = round(EquityPlayer.eval_hand(
-        #     curr_player.cards, self.game.board, len(self.game.player_list)), 1)
-        # Summarise complex states
-        opponent_acts = [','.join(y) for x, y in self.game.history.items() if x != curr_player.uuid]
-        return ','.join(opponent_acts) + Card.print_pretty_cards(curr_player.cards)
+    def hole_card_state(self, game, player):
+        opponent_acts = [str(y) for x, y in game.history.items() if x != player.uuid]
+        return ','.join(opponent_acts) + ','.join([Card.int_to_str(x) for x in player.cards])
 
-    def train(self, iterations, ante=1.0, bet1=2.0, bet2=8.0, print_interval=1000000):
+    def train(self, iterations, print_interval=1000):
         ''' Do ficticious self-play to find optimal strategy'''
         util = 0.0
 
         for i in range(iterations):
             if i % print_interval == 0 and i != 0:
                 print("\rP1 expected value after %i iterations: %f" % (i, util / i))
+                for state, item in self.game_states.items():
+                    if item.strategy_[Action.FOLD] != 1 / len(item.strategy_.values()):
+                        print(state, "->", item)
 
             # Start a game
-            actions = self.start_game()
-            history = list()
-            util += self.cfr(actions, history, 1, 1)
+            game = self.game.copy()
+            actions = self.start_game(game)
+            util += self.cfr(actions, game, 1, 1)
 
         return util / iterations
 
@@ -46,18 +42,28 @@ class GameWrapper:
         """
         return -1
 
-    def cfr(self, actions, history, p1, p2):
-        player = self.game.player_list.next_player()
+    def evaluation(self, game):
+        reward = sum(game.bets.values())
+        game.comm_cards(3)
+        winner = game.calculate_winner()
 
-        probability_weight = p1 if self.game.player_list.pos == 1 else p2
+        if winner == self.players[game.player_list.pos]:
+            return reward
+        return -game.bets[self.players[game.player_list.pos].uuid]
+
+    def cfr(self, actions, game, p1, p2):
+        player = game.player_list.pos
+        # game.player_list.next_player()
+
+        probability_weight = p1 if player == 0 else p2
 
         # Check if state is terminal
-        if self.game.player_list.visited_all():
+        if game.player_list.visited_all():
             # Direct payout
-            return self.evaluation()
+            return self.evaluation(game)
 
         # Current game state
-        state = self.hole_card_state()
+        state = self.hole_card_state(game, game.player_list.rotation[player])
         if state in self.game_states:
             node = self.game_states[state]  # Get our node if it already exists
             actions = node.actions_
@@ -72,15 +78,13 @@ class GameWrapper:
         # for each of our possible actions, compute the utility of it
         # thus, finding the overall utility of this current state
         for action in actions:
-            next_history = list(history)  # copy the game state
-            next_history.append(action)
+            next_game = game.copy()  # Duplicate game
+            next_actions = next_game.step_bets([x for x in actions], action)  # Make action
 
-            if self.game.player_list.pos == 1:
-                util[action] = -self.cfr(
-                    cards, next_history, p1 * strategy[action], p2)
+            if player == 0:
+                util[action] = -self.cfr(next_actions, next_game, p1 * strategy[action], p2)
             else:
-                util[action] = -self.cfr(
-                    cards, next_history, p1, p2 * strategy[action])
+                util[action] = -self.cfr(next_actions, next_game, p1, p2 * strategy[action])
 
             node_util += strategy[action] * util[action]
 
@@ -94,11 +98,9 @@ class GameWrapper:
 
         return node_util
 
-    def start_game(self):
-        game = self.game
-        self.step = 0
-
+    def start_game(self, game):
         game.all_in = False
+        game.players = [x.copy() for x in self.game.players]
         game.player_list = PlayerList(game.players)
         game.reset_bets()
         game.deal_cards()
@@ -108,43 +110,3 @@ class GameWrapper:
         game.step_blind(True)  # Big Blind
 
         return [Action.FOLD, Action.CALL] + game.BET_ACTIONS  # First round allows players to respond to blinds
-
-    def step_bets(self, avail_actions):
-        k = 1
-        if self.step == 0:
-            k = 3
-        game = self.game
-
-        # if game.all_in:  # No more betting to take place
-        #     game.comm_cards(k)
-        #     return
-        self.reward += game.betting_round(avail_actions)
-
-        game.reset_bets()
-
-        if len(game.player_list) == 1:
-            return
-
-        game.comm_cards(k)  # Reveal cards after each betting round
-        self.step += 1
-
-    def test_main(self):
-        pass
-
-    def is_terminal(self):
-        return True
-
-    def is_chance(self):
-        return True
-
-    def evaluation(self):
-        winner = self.game.calculate_winner()
-        if winner == self.players[self.to_move]:
-            return self.reward
-        return -self.game.bets[self.players[self.to_move].uuid]
-
-    def inf_set(self):
-        return -1
-
-    def play(self, action):
-        return self
