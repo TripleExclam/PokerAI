@@ -248,10 +248,12 @@ class Poker:
         for k in [3, 1, 1]:  # Flop, Turn and River cards
             if self.all_in:  # No more betting to take place
                 self.comm_cards(k)
-                time.sleep(1)  # Allow enough time to view in GUI
+                if self.display:
+                    time.sleep(1)  # Allow enough time to view in GUI
                 continue
             pot += self.betting_round(avail_actions)
-            time.sleep(1)  # Allow enough time to view in GUI
+            if self.display:
+                time.sleep(1)
             avail_actions = [Action.FOLD, Action.CHECK] + self.BET_ACTIONS
             self.reset_bets()
 
@@ -259,7 +261,8 @@ class Poker:
                 break
 
             self.comm_cards(k)  # Reveal cards after each betting round
-            time.sleep(1)  # Allow enough time to view in GUI
+            if self.display:
+                time.sleep(1)
 
         winner = self.calculate_winner()
         winner.add_stack(pot)
