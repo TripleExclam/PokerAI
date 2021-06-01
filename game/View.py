@@ -1,6 +1,6 @@
 import numpy as np
 import pyglet
-from pyglet.gl import glClearColor
+from pyglet.gl import glClearColor, glClear, glColor4f, GL_LINE_LOOP
 from math import radians, cos, sin
 
 GREEN = list(np.array([0, 255, 0, 123]))
@@ -21,7 +21,6 @@ class PygletWindow:
     def circle(self, x_pos, y_pos, radius, color, thickness, numPoints=100):
         verts = []
         y_pos = self.top - y_pos
-        from pyglet.gl import glColor4f
         glColor4f(*[int(c) for c in color])
         for i in range(numPoints):
             angle = radians(float(i) / numPoints * 360.0)
@@ -29,7 +28,6 @@ class PygletWindow:
             y = radius * sin(angle) + y_pos
             verts += [x, y]
         circle = pyglet.graphics.vertex_list(numPoints, ('v2f', verts))
-        from pyglet.gl import GL_LINE_LOOP
         circle.draw(GL_LINE_LOOP)
 
     def text(self, text, x, y, font_size=20, color=None):
@@ -43,7 +41,6 @@ class PygletWindow:
         y = self.top - y
         x = int(round(x))
         y = int(round(y))
-        from pyglet.gl import glColor4f
         glColor4f(*[int(c) for c in color])
         rect = pyglet.graphics.draw(4, pyglet.gl.GL_QUADS, ('v2f', [x, y, x + dx, y, x + dx, y + dy, x, y + dy]))
         rect.draw()
@@ -51,7 +48,6 @@ class PygletWindow:
     def reset(self):
         pyglet.clock.tick()
         self.display_surface.dispatch_events()
-        from pyglet.gl import glClear
         glClear(pyglet.gl.GL_COLOR_BUFFER_BIT)
 
     def update(self):
