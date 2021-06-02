@@ -33,7 +33,7 @@ class Node():
         return self.strategy_
 
     def get_average_strategy(self):
-        average_strategy = dict
+        average_strategy = {}
         normalizing_sum = 0
 
         for action in self.actions_:

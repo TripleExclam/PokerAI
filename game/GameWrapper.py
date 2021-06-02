@@ -1,6 +1,7 @@
 from game.Poker import *
 from agents.PlayerShell import *
 from util.Node import *
+import matplotlib.pyplot as plt
 
 
 class GameWrapper:
@@ -11,7 +12,7 @@ class GameWrapper:
             PlayerShell(1),
             PlayerShell(2)
         ]
-        self.game = Poker(self.players, 20, 10000, True)
+        self.game = Poker(self.players, 2, 10, True)
         self.actions = []
 
     def hole_card_state(self, game, player):
@@ -29,8 +30,9 @@ class GameWrapper:
     def train(self, iterations, print_interval=1000):
         ''' Do ficticious self-play to find optimal strategy'''
         util = 0.0
-
+        utils = []
         for i in range(iterations):
+            utils.append(util / (i + 1))
             if i % print_interval == 0 and i != 0:
                 print("\rP1 expected value after %i iterations: %f" % (i, util / i))
 
@@ -39,6 +41,10 @@ class GameWrapper:
             actions = self.start_game(game)
             util += self.cfr(actions, game, 1, 1)
 
+        plt.plot(range(iterations), utils)
+        plt.xlabel('iteration')
+        plt.ylabel('average utility')
+        plt.savefig('ranges/util_trend.png')
         return util / iterations
 
     def get_strategy(self):
@@ -57,6 +63,8 @@ class GameWrapper:
             result[event] = {}
             if "BET" in event:
                 result[event[0] + "ALLIN"] = {}
+                result[event[0] + "CALL"] = {}
+                result[event[0] + "FOLD"] = {}
 
         for state, node in self.game_states.items():
             hand = state[0]
@@ -64,6 +72,8 @@ class GameWrapper:
             if "BET" in events[state[1], state[2]]:
                 result[event][hand] = node.strategy_[Action.BET3BB]
                 result[event[0] + "ALLIN"][hand] = node.strategy_[Action.ALLIN]
+                result[event[0] + "CALL"][hand] = node.strategy_[Action.CALL]
+                result[event[0] + "FOLD"][hand] = node.strategy_[Action.FOLD]
             else:
                 result[event][hand] = node.strategy_[Action.CALL]
 
@@ -71,24 +81,23 @@ class GameWrapper:
 
     def evaluation(self, game):
         reward = sum(game.bets.values())
-
         p1 = game.players[game.player_list.pos]
         p2 = game.players[1 - game.player_list.pos]
         pair1 = Card.get_rank_int(p1.cards[0]) == Card.get_rank_int(p1.cards[1])
         pair2 = Card.get_rank_int(p2.cards[0]) == Card.get_rank_int(p2.cards[1])
         higher = Card.get_rank_int(p1.cards[1]) > Card.get_rank_int(p2.cards[1])
         equal = Card.get_rank_int(p1.cards[1]) == Card.get_rank_int(p2.cards[1])
+
         if (pair1 and not pair2) or (pair1 and pair2 and higher) \
                 or (not pair1 and not pair2 and higher):
-            return reward
+            return reward - game.bets[p1.uuid]
         elif (pair2 and pair1 and equal) or (not pair1 and not pair2 and equal):
-            return 0
+            return (reward / 2) - game.bets[p1.uuid]
         else:
             return -game.bets[p1.uuid]
 
     def cfr(self, actions, game, p1, p2):
         player = game.player_list.pos
-        # game.player_list.next_player()
 
         probability_weight = p1 if player == 0 else p2
 
@@ -127,9 +136,9 @@ class GameWrapper:
         for action in actions:
             regret = util[action] - node_util
             if player == 0:
-                node.regret_sum_[action] += regret * p1
-            else:
                 node.regret_sum_[action] += regret * p2
+            else:
+                node.regret_sum_[action] += regret * p1
 
         return node_util
 
