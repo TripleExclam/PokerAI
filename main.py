@@ -19,7 +19,7 @@ def run_game():
 
 def create_ranges():
     cfr = GameWrapper()
-    util = cfr.train(500000)
+    util = cfr.train(3000000)
 
     label = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
     rank_index_map = {
@@ -74,6 +74,7 @@ def create_ranges():
                 text=label[j], loc='center', edgecolor='none', facecolor='none')
         ax.add_table(tb)
         plt.title(title)
+        plt.savefig('ranges/' + title + '.png')
         return fig
 
     print("Player One Expected Value Per Hand: %f" % util)

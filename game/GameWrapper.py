@@ -49,10 +49,10 @@ class GameWrapper:
         #
         events = {(1, "['', '']"): "1BET",  # P1 acts first
                   (2, "['C', '']"): "2BET",  # P2 responds to a call from P1
-                  (2, "['B', '']"): "2CALL",  # P2 responds to a bet from P1
-                  (2, "['AI', '']"): "2CALL",  # P2 responds to a All-in from P1
-                  (1, "['C', 'B']"): "1CALL",  # P1 responds to a bet from P2
-                  (1, "['C', 'AI']"): "1CALL"}  # P1 responds to an all in from P2
+                  (2, "['B', '']"): "2CALLB",  # P2 responds to a bet from P1
+                  (2, "['AI', '']"): "2CALLAI",  # P2 responds to a All-in from P1
+                  (1, "['C', 'B']"): "1CALLB",  # P1 responds to a bet from P2
+                  (1, "['C', 'AI']"): "1CALLAI"}  # P1 responds to an all in from P2
         for event in events.values():
             result[event] = {}
             if "BET" in event:
@@ -71,12 +71,20 @@ class GameWrapper:
 
     def evaluation(self, game):
         reward = sum(game.bets.values())
-        game.comm_cards(3)
-        winner = game.calculate_winner()
 
-        if winner == self.players[game.player_list.pos]:
+        p1 = game.players[game.player_list.pos]
+        p2 = game.players[1 - game.player_list.pos]
+        pair1 = Card.get_rank_int(p1.cards[0]) == Card.get_rank_int(p1.cards[1])
+        pair2 = Card.get_rank_int(p2.cards[0]) == Card.get_rank_int(p2.cards[1])
+        higher = Card.get_rank_int(p1.cards[1]) > Card.get_rank_int(p2.cards[1])
+        equal = Card.get_rank_int(p1.cards[1]) == Card.get_rank_int(p2.cards[1])
+        if (pair1 and not pair2) or (pair1 and pair2 and higher) \
+                or (not pair1 and not pair2 and higher):
             return reward
-        return -game.bets[self.players[game.player_list.pos].uuid]
+        elif (pair2 and pair1 and equal) or (not pair1 and not pair2 and equal):
+            return 0
+        else:
+            return -game.bets[p1.uuid]
 
     def cfr(self, actions, game, p1, p2):
         player = game.player_list.pos
@@ -119,9 +127,9 @@ class GameWrapper:
         for action in actions:
             regret = util[action] - node_util
             if player == 0:
-                node.regret_sum_[action] += regret * p2
-            else:
                 node.regret_sum_[action] += regret * p1
+            else:
+                node.regret_sum_[action] += regret * p2
 
         return node_util
 
