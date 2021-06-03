@@ -94,7 +94,7 @@ def create_ranges():
 
 
 if __name__ == '__main__':
-    run_game()
+    # run_game()
     # wrap = GameWrapper()
     # util = wrap.train(100000)
-    # create_ranges()
+    create_ranges()
