@@ -23,7 +23,7 @@ def run_game():
 
 def create_ranges():
     cfr = GameWrapper()
-    util = cfr.train(1000000)
+    util = cfr.train(5000000)
 
     label = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
     rank_index_map = {

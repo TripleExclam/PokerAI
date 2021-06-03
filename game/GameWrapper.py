@@ -39,7 +39,7 @@ class GameWrapper:
             # Start a game
             game = self.game.copy()
             actions = self.start_game(game)
-            util += self.cfr(actions, game, 1, 1)
+            util += self.cfr(actions, game, 1, 1, 0)
 
         plt.plot(range(iterations), utils)
         plt.xlabel('iteration')
@@ -52,7 +52,7 @@ class GameWrapper:
         Gives the action played by each player based on the game states
         """
         result = {}
-        #
+
         events = {(1, "['', '']"): "1BET",  # P1 acts first
                   (2, "['C', '']"): "2BET",  # P2 responds to a call from P1
                   (2, "['B', '']"): "2CALLB",  # P2 responds to a bet from P1
@@ -79,32 +79,38 @@ class GameWrapper:
 
         return result
 
-    def evaluation(self, game):
+    def evaluation(self, game, player):
         reward = sum(game.bets.values())
-        p1 = game.players[game.player_list.pos]
-        p2 = game.players[1 - game.player_list.pos]
+        p1 = game.players[player]
+        p2 = game.players[1 - player]
+        if len(game.player_list.rotation) == 1:
+            return reward - game.bets[p1.uuid] if game.player_list.rotation[0].uuid == p1.uuid \
+                else -game.bets[p1.uuid]
+
         pair1 = Card.get_rank_int(p1.cards[0]) == Card.get_rank_int(p1.cards[1])
         pair2 = Card.get_rank_int(p2.cards[0]) == Card.get_rank_int(p2.cards[1])
-        higher = Card.get_rank_int(p1.cards[1]) > Card.get_rank_int(p2.cards[1])
-        equal = Card.get_rank_int(p1.cards[1]) == Card.get_rank_int(p2.cards[1])
+        higher1 = Card.get_rank_int(p1.cards[1]) > Card.get_rank_int(p2.cards[1])
+        higher2 = Card.get_rank_int(p1.cards[0]) > Card.get_rank_int(p2.cards[0])
+        equal1 = Card.get_rank_int(p1.cards[1]) == Card.get_rank_int(p2.cards[1])
+        equal2 = Card.get_rank_int(p1.cards[0]) == Card.get_rank_int(p2.cards[0])
+        equal = equal1 and equal2
+        higher = higher1 or (equal1 and higher2)
 
         if (pair1 and not pair2) or (pair1 and pair2 and higher) \
                 or (not pair1 and not pair2 and higher):
             return reward - game.bets[p1.uuid]
-        elif (pair2 and pair1 and equal) or (not pair1 and not pair2 and equal):
+        elif equal:
             return (reward / 2) - game.bets[p1.uuid]
         else:
             return -game.bets[p1.uuid]
 
-    def cfr(self, actions, game, p1, p2):
-        player = game.player_list.pos
-
+    def cfr(self, actions, game, p1, p2, player):
         probability_weight = p1 if player == 0 else p2
 
         # Check if state is terminal
         if game.player_list.visited_all():
             # Direct payout
-            return self.evaluation(game)
+            return self.evaluation(game, player)
 
         # Current game state
         state = self.hole_card_state(game, game.player_list.rotation[player])
@@ -126,9 +132,9 @@ class GameWrapper:
             next_actions = next_game.step_bets([x for x in actions], action)  # Make action
 
             if player == 0:
-                util[action] = -self.cfr(next_actions, next_game, p1 * strategy[action], p2)
+                util[action] = -self.cfr(next_actions, next_game, p1 * strategy[action], p2, 1)
             else:
-                util[action] = -self.cfr(next_actions, next_game, p1, p2 * strategy[action])
+                util[action] = -self.cfr(next_actions, next_game, p1, p2 * strategy[action], 0)
 
             node_util += strategy[action] * util[action]
 
