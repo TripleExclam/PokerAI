@@ -10,7 +10,11 @@ from matplotlib.table import Table
 def run_game():
     players = [
         RandomPlayer(1),
-        RandomPlayer(2)
+        RandomPlayer(2),
+        RandomPlayer(3),
+        RandomPlayer(4),
+        RandomPlayer(5),
+        RandomPlayer(6)
     ]
     # for i in range(100):
     game = Poker(players, 10, 1000, True, True)
@@ -90,7 +94,7 @@ def create_ranges():
 
 
 if __name__ == '__main__':
-    # run_game()
+    run_game()
     # wrap = GameWrapper()
     # util = wrap.train(100000)
-    create_ranges()
+    # create_ranges()

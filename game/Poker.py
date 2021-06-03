@@ -44,15 +44,16 @@ class Poker:
             self.viewer = PygletWindow(650, 450)
         self.viewer.reset()
 
-        self.viewer.circle(300, 200, 200, color=BLUE,
+        self.viewer.circle(300, 200, 200, color=BLUE,  # draw table
                            thickness=0)
         self.viewer.text(f"CARDS: {Card.print_pretty_cards(self.board)}", 240, 200,
                          font_size=10,
-                         color=BLACK)
+                         color=BLACK)  # draw community cards
         self.viewer.text(f"POT: ${sum(self.bets.values())}", 240, 180,
                          font_size=10,
-                         color=BLACK)
+                         color=BLACK)  # draw current pot
 
+        # for each player, draw its stack, actions and bets
         for player in self.players:
             radian = player.uuid * 60 * np.pi / 180
             x = 210 * np.cos(radian) + 300
@@ -73,7 +74,8 @@ class Poker:
                              font_size=10,
                              color=GREEN)
 
-            self.viewer.text(f"${self.bets[player.uuid]}", x_inner, y_inner, font_size=10, color=BLACK)
+            self.viewer.text(
+                f"${self.bets[player.uuid]}", x_inner, y_inner, font_size=10, color=BLACK)
 
         self.viewer.update()
 
@@ -92,7 +94,8 @@ class Poker:
         """
         self.deck.shuffle()
         for player in self.players:
-            player.set_cards(self.deck.draw(2))  # Texas Hold'em gives each player 2 cards.
+            # Texas Hold'em gives each player 2 cards.
+            player.set_cards(self.deck.draw(2))
 
             if self.display:
                 self.display_game()
@@ -190,19 +193,22 @@ class Poker:
         player = self.player_list.next_player()
 
         if action is None:
-            action = player.act(self.get_game_state(ind, self.history), avail_actions)
+            action = player.act(self.get_game_state(
+                ind, self.history), avail_actions)
         amount = self.get_amount(player, action)
         if amount >= player.stack:
             action = Action.CALL if self.all_in else Action.ALLIN
 
         self.history[player.uuid].append((action, amount))
         if action == Action.FOLD:
-            self.player_list.remove(player)  # player is not participating in this hand
+            # player is not participating in this hand
+            self.player_list.remove(player)
             return avail_actions
 
         # If a player raises or calls, we calculate the remainder they need to pay.
         debt = max(self.bets.values()) - self.bets[player.uuid]
-        amount = min(amount + debt, player.stack)  # Effectively places the player all-in if they cannot afford
+        # Effectively places the player all-in if they cannot afford
+        amount = min(amount + debt, player.stack)
         # player.add_stack(-amount)
 
         self.bets[player.uuid] += amount
@@ -255,7 +261,8 @@ class Poker:
         self.step_blind(False)  # Small blind
         self.step_blind(True)  # Big Blind
 
-        avail_actions = [Action.FOLD, Action.CALL] + self.BET_ACTIONS  # First round allows players to respond to blinds
+        # First round allows players to respond to blinds
+        avail_actions = [Action.FOLD, Action.CALL] + self.BET_ACTIONS
         for k in [3]:  # Flop, Turn and River cards
             if self.all_in:  # No more betting to take place
                 self.comm_cards(k)
@@ -275,7 +282,8 @@ class Poker:
         if self.display:
             self.display_game()
         if self.log:
-            print(winner.uuid, "wins with" + Card.print_pretty_cards(winner.cards))
+            print(winner.uuid, "wins with" +
+                  Card.print_pretty_cards(winner.cards))
 
     def play_game(self, n):
         """
